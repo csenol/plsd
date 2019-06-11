@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	. "github.bus.zalan.do/csenol/plst/pkg/api"
+	. "github.com/csenol/plsd/pkg/api"
 	"github.com/spf13/cobra"
 )
 
