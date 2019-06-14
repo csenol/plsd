@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -241,4 +242,143 @@ func WriteTestResult(testCase TestCase, setup TestCaseSetup, err error) {
 		fmt.Println("")
 	}
 
+}
+
+func executeEndpointToEsRoot(esEndpoint string) (string, error) {
+	u, err := url.Parse(esEndpoint)
+	if err != nil {
+		return "", err
+	}
+	return u.Scheme + "://" + u.Host + "/", nil
+
+}
+
+func RunPerf(queryFilePath string, script string, contextFilePath string, esEndpoint string, index string, from int, size int, timeout string, terminateAfter int, repeat int, debug bool) ([]int64, error) {
+	queryFile, err := os.Open(queryFilePath)
+	if err != nil {
+		os.Stderr.WriteString("error while opening query file")
+		return nil, err
+	}
+
+	byteValue, _ := ioutil.ReadAll(queryFile)
+	var query map[string]interface{}
+
+	err = json.Unmarshal(byteValue, &query)
+
+	defer queryFile.Close()
+	var params map[string]interface{} = make(map[string]interface{})
+	var indexName string
+	if contextFilePath != "" {
+		testCaseSetup, err := LoadTestCaseSetup(contextFilePath)
+		if err != nil {
+			os.Stderr.WriteString("error while opening context file")
+			return nil, err
+		}
+		params = testCaseSetup.Params
+		indexName = testCaseSetup.Index
+	}
+
+	esRoot, _ := executeEndpointToEsRoot(esEndpoint)
+
+	if index != "" {
+		indexName = index
+	}
+	var result []int64
+	for i := 0; i < repeat; i++ {
+		r, err := QueryES(query, script, indexName, params, esRoot, from, size, timeout, terminateAfter, debug && i == 0)
+		if err == nil {
+			timings := extractTimings(r)
+			result = append(result, timings...)
+		}
+
+	}
+	return result, nil
+
+}
+
+func QueryES(query map[string]interface{}, script string, index string, params map[string]interface{}, esUrl string, from int, size int, timeout string, terminateAfter int, debug bool) (*ProfileResponse, error) {
+
+	url := esUrl + index + "/_search"
+	body := map[string]interface{}{
+		"from":            from,
+		"size":            size,
+		"timeout":         timeout,
+		"terminate_after": terminateAfter,
+		"profile":         true,
+		"query":           query,
+		"sort": map[string]interface{}{
+			"_script": map[string]interface{}{
+				"type": "number",
+				"script": map[string]interface{}{
+					"lang":   "painless",
+					"source": script,
+					"params": params,
+				},
+				"order": "desc",
+			},
+		},
+		"_source": map[string]interface{}{
+			"excludes": []string{"*"},
+		},
+	}
+
+	client := &http.Client{}
+	js, err := json.Marshal(body)
+	req, _ := http.NewRequest("GET", url, bytes.NewBuffer(js))
+	if debug {
+		buf := new(bytes.Buffer)
+		json.Indent(buf, js, "", "  ")
+		fmt.Println(buf.String())
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ProfileResponse
+	err = json.Unmarshal(respBody, &result)
+	if err != nil {
+		buf := new(bytes.Buffer)
+		json.Indent(buf, respBody, "", "  ")
+		fmt.Println(buf.String())
+		return nil, err
+	}
+
+	if debug {
+		buf := new(bytes.Buffer)
+		json.Indent(buf, respBody, "", "  ")
+		fmt.Println(buf.String())
+	}
+	return &result, nil
+
+}
+
+type ProfileResponse struct {
+	Hits    map[string]interface{} `json:"hits"`
+	Profile struct {
+		Shards []struct {
+			Searches []struct {
+				Collector []struct {
+					TimeInNanos int64 `json:"time_in_nanos"`
+				} `json:"collector"`
+			} `json:"searches"`
+		} `json:"shards"`
+	} `json:"profile"`
+}
+
+func extractTimings(pr *ProfileResponse) []int64 {
+	var r []int64
+	for _, shard := range pr.Profile.Shards {
+		for _, search := range shard.Searches {
+			for _, collector := range search.Collector {
+				r = append(r, collector.TimeInNanos)
+			}
+		}
+	}
+
+	return r
 }
