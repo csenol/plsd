@@ -36,13 +36,15 @@ type TestCase struct {
 
 func LoadTestCaseSetups(filepath string) ([]TestCaseSetup, error) {
 	file, err := os.Open(filepath)
+	if err == nil {
+		defer file.Close()
+	}
 	if err != nil {
 		os.Stderr.WriteString("error while opening test case setup file")
 		return nil, err
 	}
 	byteValue, _ := ioutil.ReadAll(file)
 	var testCaseSetups = make([]TestCaseSetup, 0)
-	defer file.Close()
 
 	err = json.Unmarshal(byteValue, &testCaseSetups)
 	if err != nil {
@@ -54,12 +56,15 @@ func LoadTestCaseSetups(filepath string) ([]TestCaseSetup, error) {
 
 func LoadTestCaseSetup(filepath string) (*TestCaseSetup, error) {
 	file, err := os.Open(filepath)
+	if err == nil {
+		defer file.Close()
+	}
 	if err != nil {
 		os.Stderr.WriteString("error while opening test case setup file")
 		return nil, err
 	}
 	byteValue, _ := ioutil.ReadAll(file)
-	defer file.Close()
+
 	var testCaseSetup TestCaseSetup
 
 	err = json.Unmarshal(byteValue, &testCaseSetup)
@@ -116,9 +121,10 @@ func ExecuteQuery(script string, setup TestCaseSetup, elasticsearhEndpoint strin
 	resp, err := http.Post(elasticsearhEndpoint, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return nil, err
+	} else {
+		defer resp.Body.Close()
 	}
 
-	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -258,6 +264,8 @@ func RunPerf(queryFilePath string, script string, contextFilePath string, esEndp
 	if err != nil {
 		os.Stderr.WriteString("error while opening query file")
 		return nil, err
+	} else {
+		defer queryFile.Close()
 	}
 
 	byteValue, _ := ioutil.ReadAll(queryFile)
@@ -265,7 +273,6 @@ func RunPerf(queryFilePath string, script string, contextFilePath string, esEndp
 
 	err = json.Unmarshal(byteValue, &query)
 
-	defer queryFile.Close()
 	var params map[string]interface{} = make(map[string]interface{})
 	var indexName string
 	if contextFilePath != "" {
@@ -333,7 +340,9 @@ func QueryES(query map[string]interface{}, script string, index string, params m
 
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
+	if err == nil {
+		defer resp.Body.Close()
+	}
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
