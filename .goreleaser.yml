@@ -10,7 +10,7 @@ builds:
 - env:
   - CGO_ENABLED=0
   ldflags:
-   - -s -w -X "main.commit={{ .ShortCommit}} -X main.date={{ .Date}} -X main.version={{ .Version}}"  
+    - "-X  github.com/csenol/plsd/cmd.Version={{ .Version }}"
 archives:
 - replacements:
     darwin: Darwin

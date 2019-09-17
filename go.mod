@@ -8,6 +8,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.4.0
-	go.hein.dev/go-version v0.1.0
-	golang.org/x/arch v0.0.0-20190312162104-788fe5ffcd8c // indirect
+	golang.org/x/sys v0.0.0-20190812172437-4e8604ab3aff // indirect
+	golang.org/x/text v0.3.2 // indirect
 )

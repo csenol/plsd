@@ -27,12 +27,14 @@ import (
 
 var cfgFile string
 var esEndpoint string
+var Version string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "plsd",
-	Short: "Painless Script Development Toolkit",
-	Long:  ``,
+	Use:     "plsd",
+	Short:   "Painless Script Development Toolkit",
+	Long:    ``,
+	Version: Version,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
