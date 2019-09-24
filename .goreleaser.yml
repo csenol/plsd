@@ -37,6 +37,7 @@ brew:
       email: cagdassenol@gmail.com
 
     homepage: "https://github.com/csenol/plsd"
+    folder: Formula
 
     # Your app's description.
     # Default is empty.
