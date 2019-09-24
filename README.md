@@ -27,3 +27,15 @@ Use "plsd [command] --help" for more information about a command.
 ```
 
 
+# Install
+
+## Linux
+ You can either download the .deb or .rpm from the [releases page](https://github.com/csenol/plsd/releases) and install with dpkg -i and rpm -i respectively or use homebrew same as macOS
+## macOS
+You can install it by using homebrew taps  
+`brew tap csenol/plsd`  
+`brew install plsd`
+## Build from source
+If you have go 1.12>= installed  
+`go install ./...`
+
