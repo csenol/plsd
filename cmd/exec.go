@@ -21,11 +21,8 @@ var contextFile string
 var execCmd = &cobra.Command{
 	Use:   "exec",
 	Short: "Executes Painless Script and returns output",
-	Long: `Executes a given script against a running Elasticsearch Node.
-`,
+	Long:  `Executes a given script against a running Elasticsearch Node.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		watcher, _ := fsnotify.NewWatcher()
-
 		var tcs *TestCaseSetup
 		var err error
 		if contextFile == "" {
@@ -55,6 +52,8 @@ var execCmd = &cobra.Command{
 			b, err := ioutil.ReadFile(scriptFile)
 			if err != nil {
 				os.Stderr.WriteString(err.Error())
+				fmt.Print(err)
+				os.Exit(-1)
 			}
 			script = string(b)
 		}
@@ -63,11 +62,20 @@ var execCmd = &cobra.Command{
 
 		if err != nil {
 			os.Stderr.WriteString(err.Error())
+			fmt.Print(err)
+			os.Exit(-1)
+
 		} else {
 			fmt.Print(resp.Result)
 		}
 
 		if watch {
+			watcher, err := fsnotify.NewWatcher()
+			if err != nil {
+				fmt.Print(err)
+				os.Exit(-1)
+				return
+			}
 			sigs := make(chan os.Signal, 1)
 			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 

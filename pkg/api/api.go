@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -43,7 +44,11 @@ func LoadTestCaseSetups(filepath string) ([]TestCaseSetup, error) {
 		os.Stderr.WriteString("error while opening test case setup file")
 		return nil, err
 	}
-	byteValue, _ := ioutil.ReadAll(file)
+	byteValue, err := ioutil.ReadAll(file)
+
+	if err != nil {
+		return nil, err
+	}
 	var testCaseSetups = make([]TestCaseSetup, 0)
 
 	err = json.Unmarshal(byteValue, &testCaseSetups)
@@ -63,8 +68,10 @@ func LoadTestCaseSetup(filepath string) (*TestCaseSetup, error) {
 		os.Stderr.WriteString("error while opening test case setup file")
 		return nil, err
 	}
-	byteValue, _ := ioutil.ReadAll(file)
-
+	byteValue, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
 	var testCaseSetup TestCaseSetup
 
 	err = json.Unmarshal(byteValue, &testCaseSetup)
@@ -95,7 +102,7 @@ type Response struct {
 	Result interface{} `json:"result"`
 }
 
-func ExecuteQuery(script string, setup TestCaseSetup, elasticsearhEndpoint string) (*Response, error) {
+func ExecuteQuery(script string, setup TestCaseSetup, elasticsearchEndpoint string) (*Response, error) {
 	context := ""
 	if setup.Context == "" {
 		context = "score"
@@ -118,7 +125,7 @@ func ExecuteQuery(script string, setup TestCaseSetup, elasticsearhEndpoint strin
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.Post(elasticsearhEndpoint, "application/json", bytes.NewBuffer(jsonValue))
+	resp, err := http.Post(elasticsearchEndpoint, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return nil, err
 	} else {
@@ -132,7 +139,7 @@ func ExecuteQuery(script string, setup TestCaseSetup, elasticsearhEndpoint strin
 	if resp.StatusCode != 200 {
 		buf := new(bytes.Buffer)
 		json.Indent(buf, body, "", "  ")
-		return nil, fmt.Errorf(buf.String())
+		return nil, errors.New(buf.String())
 	}
 
 	var response Response
@@ -143,10 +150,9 @@ func ExecuteQuery(script string, setup TestCaseSetup, elasticsearhEndpoint strin
 	return &response, nil
 }
 
-///_scripts/painless/_execute
-func RunTest(script string, setup TestCaseSetup, elasticsearhEndpoint string) error {
+func RunTest(script string, setup TestCaseSetup, elasticsearchEndpoint string) error {
 
-	response, err := ExecuteQuery(script, setup, elasticsearhEndpoint)
+	response, err := ExecuteQuery(script, setup, elasticsearchEndpoint)
 	if err != nil {
 		return err
 	}
@@ -157,7 +163,7 @@ func RunTest(script string, setup TestCaseSetup, elasticsearhEndpoint string) er
 			return fmt.Errorf("Error type %T %t", setup.ExpectedResult, setup.ExpectedResult)
 		}
 		if math.Abs(v-a) > delta {
-			return fmt.Errorf("Expeted %f Got %f", setup.ExpectedResult, v)
+			return fmt.Errorf("Expected %f Got %f", setup.ExpectedResult, v)
 		}
 
 	case string:
@@ -177,7 +183,7 @@ func RunTest(script string, setup TestCaseSetup, elasticsearhEndpoint string) er
 		}
 
 		if v != a {
-			return fmt.Errorf("Expeted %d Got %d", a, v)
+			return fmt.Errorf("Expected %d Got %d", a, v)
 		}
 
 	case bool:
@@ -187,19 +193,16 @@ func RunTest(script string, setup TestCaseSetup, elasticsearhEndpoint string) er
 		}
 
 		if v != a {
-			return fmt.Errorf("Expeted %t Got %t", a, v)
+			return fmt.Errorf("Expected %t Got %t", a, v)
 		}
 
 	default:
 		return fmt.Errorf("I don't know about type %T!\n", v)
 	}
-
 	return nil
-
 }
 
-func RunTestCase(testCase TestCase, elasticsearhEndpoint string, parallel bool) int32 {
-
+func RunTestCase(testCase TestCase, elasticsearchEndpoint string, parallel bool) int32 {
 	if parallel {
 		var wg sync.WaitGroup
 		var failed int32
@@ -208,7 +211,7 @@ func RunTestCase(testCase TestCase, elasticsearhEndpoint string, parallel bool) 
 			s := setup
 			go func() {
 				defer wg.Done()
-				testResult := RunTest(testCase.Script, s, elasticsearhEndpoint)
+				testResult := RunTest(testCase.Script, s, elasticsearchEndpoint)
 				WriteTestResult(testCase, s, testResult)
 				if testResult != nil {
 					atomic.AddInt32(&failed, 1)
@@ -222,7 +225,7 @@ func RunTestCase(testCase TestCase, elasticsearhEndpoint string, parallel bool) 
 		var failed int32 = 0
 		for _, setup := range testCase.TestCaseSetup {
 
-			testResult := RunTest(testCase.Script, setup, elasticsearhEndpoint)
+			testResult := RunTest(testCase.Script, setup, elasticsearchEndpoint)
 			WriteTestResult(testCase, setup, testResult)
 			if testResult != nil {
 				failed += 1

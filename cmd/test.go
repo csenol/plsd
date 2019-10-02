@@ -14,7 +14,7 @@ var testFile string
 
 var testCmd = &cobra.Command{
 	Use:   "test",
-	Short: "Runs test files woth the script",
+	Short: "Runs test files with the script",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		if testFile == "" {
