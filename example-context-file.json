@@ -1,0 +1,11 @@
+{
+    "index": "my-index",
+    "context": "score",
+    "document": {
+        "rank": 4
+    },
+    "params" : {
+        "max_rank": 5
+    }
+
+}

@@ -39,3 +39,106 @@ You can install it by using homebrew taps
 If you have go 1.12>= installed  
 `go install ./...`
 
+
+# Examples
+
+
+## Script Execution and Development
+Let's create an index as in Elasticsearch [docs](https://www.elastic.co/guide/en/elasticsearch/painless/7.3/painless-execute-api.html)
+
+``` bash
+curl -X PUT "localhost:9200/my-index?pretty" -H 'Content-Type: application/json' -d'
+{
+  "mappings": {
+      "properties": {
+        "field": {
+          "type": "keyword"
+        },
+        "rank": {
+          "type": "long"
+        }
+      }
+  }
+}
+'
+```
+
+
+With a context file example-context-file.json
+
+``` json
+{
+    "index": "my-index",
+    "context": "score",
+    "document": {
+        "rank": 4
+    },
+    "params" : {
+        "max_rank": 5
+    }
+
+}
+```
+
+
+and with a painless script as example-script.painless  
+
+``` groovy
+(double)doc['rank'].value / params.max_rank
+```
+
+Running script with *plsd*  
+``` bash
+plsd exec --context-file example-context-file.json --script-file example-script.painless
+0.8
+```
+
+
+You can also *watch* files and run script with every single change. This can be useful with development
+
+``` bash
+plsd exec --context-file example-context-file.json --script-file example-script.painless --watch
+```
+## Testing 
+
+plsd can be also to write tests for painless scripts
+An example test file is as follows  
+
+``` json
+[
+    {
+        "description":"This Test Should pass",
+        "index": "my-index",
+        "params": {
+            "max_rank":5
+        },
+        "document": {
+            "rank":4
+        },
+        "expected_result": 0.8
+    },
+    {
+        "description":"This Test Should FAIL",
+        "index": "my-index",
+        "params": {
+            "max_rank":0
+        },
+        "document": {
+            "rank":4
+        },
+        "expected_result": 5
+    }
+]
+
+```
+
+And you can run the test with plsd
+
+``` bash
+plsd test --test-file example-test.json < example-script.painless
+Test Passed: This Test Should pass
+This Test Should FAIL 
+ TestCase Failed at example-test.json
+ Expected 5.000000 Got Infinity
+```
+
