@@ -151,51 +151,31 @@ func ExecuteQuery(script string, setup TestCaseSetup, elasticsearchEndpoint stri
 }
 
 func RunTest(script string, setup TestCaseSetup, elasticsearchEndpoint string) error {
-
 	response, err := ExecuteQuery(script, setup, elasticsearchEndpoint)
 	if err != nil {
 		return err
 	}
-	switch v := response.Result.(type) {
-	case float64:
-		a, ok := setup.ExpectedResult.(float64)
-		if !ok {
-			return fmt.Errorf("Error type %T %t", setup.ExpectedResult, setup.ExpectedResult)
-		}
-		if math.Abs(v-a) > delta {
-			return fmt.Errorf("Expected %f Got %f", setup.ExpectedResult, v)
-		}
-
-	case string:
-		a, ok := setup.ExpectedResult.(string)
-		if !ok {
-			return fmt.Errorf("Error type %T %t", setup.ExpectedResult, setup.ExpectedResult)
-		}
-
-		if v != a {
-			return fmt.Errorf("Error type %T %t", setup.ExpectedResult, setup.ExpectedResult)
-		}
-
+	switch v := setup.ExpectedResult.(type) {
 	case int:
-		a, ok := setup.ExpectedResult.(int)
-		if !ok {
-			return fmt.Errorf("Error type %T %t", setup.ExpectedResult, setup.ExpectedResult)
+		a, ok := response.Result.(int)
+		if !ok || v != a {
+			return fmt.Errorf("Expected %d Got %s", setup.ExpectedResult, response.Result)
 		}
-
-		if v != a {
-			return fmt.Errorf("Expected %d Got %d", a, v)
+	case float64:
+		a, ok := response.Result.(float64)
+		if !ok || math.Abs(v-a) > delta {
+			return fmt.Errorf("Expected %f Got %s", setup.ExpectedResult, response.Result)
 		}
-
+	case string:
+		a, ok := response.Result.(string)
+		if !ok || v != a {
+			return fmt.Errorf("Expected %s Got %s", setup.ExpectedResult, response.Result)
+		}
 	case bool:
-		a, ok := setup.ExpectedResult.(bool)
-		if !ok {
-			return fmt.Errorf("Error type %T %t", setup.ExpectedResult, setup.ExpectedResult)
+		a, ok := response.Result.(bool)
+		if !ok || v != a {
+			return fmt.Errorf("Expected %t Got %s", setup.ExpectedResult, response.Result)
 		}
-
-		if v != a {
-			return fmt.Errorf("Expected %t Got %t", a, v)
-		}
-
 	default:
 		return fmt.Errorf("I don't know about type %T!\n", v)
 	}
