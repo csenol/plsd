@@ -1,0 +1,24 @@
+[
+    {
+        "description":"This Test Should pass",
+        "index": "my-index",
+        "params": {
+            "max_rank":5
+        },
+        "document": {
+            "rank":4
+        },
+        "expected_result": 0.8        
+    },
+    {
+        "description":"This Test Should FAIL",
+        "index": "my-index",
+        "params": {
+            "max_rank":0
+        },
+        "document": {
+            "rank":4
+        },
+        "expected_result": 5
+    }    
+]
