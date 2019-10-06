@@ -142,3 +142,7 @@ This Test Should FAIL
  Expected 5.000000 Got Infinity
 ```
 
+## REPL
+I did not bother creating a REPL for painless but it can be achieved simply by  
+`alias plsd-repl='while true; do printf ">" ; plsd exec --index my-index ; echo "" ; done'`  
+Where you can have an alias with your favorite index and context-params etc.
